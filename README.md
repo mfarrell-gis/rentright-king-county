@@ -45,4 +45,4 @@ Leaflet · SortableJS · vanilla JavaScript · CARTO Positron basemap · GitHub 
 
 ## About
 
-Individual course project at the University of Washington, Spring 2026.
+Individual project for Geography 465 at the University of Washington, Spring 2026.
