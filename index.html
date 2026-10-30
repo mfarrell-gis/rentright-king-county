@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex" />
+  <title>RentRight — King County Neighborhood Finder</title>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.fullscreen@1.6.0/Control.FullScreen.css" />
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; }
+
+    #header {
+      background: #2c3e50;
+      color: white;
+      padding: 10px 20px;
+    }
+    #header h1 { font-size: 1.2rem; margin-bottom: 2px; }
+    #header p { font-size: 0.75rem; opacity: 0.8; }
+
+    #main { display: flex; flex: 1; overflow: hidden; }
+
+    #sidebar {
+      width: 260px;
+      background: #f4f4f4;
+      border-right: 1px solid #ddd;
+      overflow-y: auto;
+      padding: 12px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    #map { flex: 1; }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: bold;
+      text-transform: uppercase;
+      color: #888;
+      margin-top: 4px;
+    }
+
+    .criterion-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 6px 8px;
+      cursor: grab;
+      font-size: 13px;
+    }
+    .criterion-row label { flex: 1; cursor: pointer; }
+    .rank-badge {
+      font-size: 11px;
+      font-weight: bold;
+      color: #2255cc;
+      min-width: 16px;
+      text-align: right;
+    }
+
+    .sidebar-btn {
+      width: 100%;
+      padding: 7px;
+      font-size: 13px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      color: white;
+      background: #2c3e50;
+    }
+    .sidebar-btn:hover { opacity: 0.85; }
+
+    #narrative {
+      font-size: 11px;
+      color: #666;
+      line-height: 1.5;
+      border-top: 1px solid #ddd;
+      padding-top: 8px;
+      margin-top: 4px;
+    }
+    /* ── Phones: map pinned on top, controls scroll beneath it ── */
+    @media (max-width: 760px) {
+      body { height: auto; display: block; }
+      #header { padding: 8px 14px; }
+      #header h1 { font-size: 1rem; }
+      #main { display: flex; flex-direction: column; overflow: visible; }
+      #map {
+        order: -1;
+        flex: none;
+        position: sticky;
+        top: 0;
+        height: 55vh;
+        height: 55svh;
+        z-index: 5;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+      }
+      #sidebar { width: 100%; border-right: none; overflow: visible; padding: 14px; }
+      .criterion-row { padding: 9px 10px; font-size: 14px; touch-action: manipulation; }
+      .criterion-row label { cursor: grab; }
+      .sidebar-btn { padding: 10px; font-size: 14px; }
+      #narrative { font-size: 12px; }
+      .legend { font-size: 10px !important; padding: 6px 8px !important; line-height: 1.3; }
+      .legend span { width: 10px !important; height: 10px !important; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="header">
+  <h1>RentRight — King County Neighborhood Finder</h1>
+  <p>Drag criteria to rank by importance. Toggle to include or exclude. Add pins for personal locations.</p>
+</div>
+
+<div id="main">
+  <div id="sidebar">
+
+    <div class="section-label">Rank Your Priorities</div>
+    <div id="criteria-list">
+      <div class="criterion-row" data-key="rent_score">
+        <input type="checkbox" checked onchange="toggleCriterion('rent_score')">
+        <label>Affordability</label>
+        <span class="rank-badge">9</span>
+      </div>
+      <div class="criterion-row" data-key="transit_score">
+        <input type="checkbox" checked onchange="toggleCriterion('transit_score')">
+        <label>Transit Access</label>
+        <span class="rank-badge">8</span>
+      </div>
+      <div class="criterion-row" data-key="crime_score">
+        <input type="checkbox" checked onchange="toggleCriterion('crime_score')">
+        <label>Safety</label>
+        <span class="rank-badge">7</span>
+      </div>
+      <div class="criterion-row" data-key="air_quality_score">
+        <input type="checkbox" checked onchange="toggleCriterion('air_quality_score')">
+        <label>Air Quality</label>
+        <span class="rank-badge">6</span>
+      </div>
+      <div class="criterion-row" data-key="salary_score">
+        <input type="checkbox" checked onchange="toggleCriterion('salary_score')">
+        <label>Median Income</label>
+        <span class="rank-badge">5</span>
+      </div>
+      <div class="criterion-row" data-key="road_buffer_score">
+        <input type="checkbox" checked onchange="toggleCriterion('road_buffer_score')">
+        <label>Away from Freeways</label>
+        <span class="rank-badge">4</span>
+      </div>
+      <div class="criterion-row" data-key="golf_buffer_score">
+        <input type="checkbox" checked onchange="toggleCriterion('golf_buffer_score')">
+        <label>Away from Golf Courses</label>
+        <span class="rank-badge">3</span>
+      </div>
+      <div class="criterion-row" data-key="walk_bike_score">
+        <input type="checkbox" checked onchange="toggleCriterion('walk_bike_score')">
+        <label>Walk / Bike Score</label>
+        <span class="rank-badge">2</span>
+      </div>
+      <div class="criterion-row" data-key="economic_health_score">
+        <input type="checkbox" checked onchange="toggleCriterion('economic_health_score')">
+        <label>Business Activity</label>
+        <span class="rank-badge">1</span>
+      </div>
+      <div class="criterion-row" data-key="proximity_score" style="display:none;">
+        <input type="checkbox" checked onchange="toggleCriterion('proximity_score')">
+        <label>Proximity to Pins</label>
+        <span class="rank-badge"></span>
+      </div>
+    </div>
+
+    <div class="section-label">Location Pins</div>
+    <button class="sidebar-btn" id="pin-btn" onclick="togglePinMode()">📍 Add Location Pin</button>
+    <button class="sidebar-btn" style="background:#888;" onclick="clearPins()">✕ Clear All Pins</button>
+
+    <button class="sidebar-btn" style="background:#27ae60;" onclick="resetCriteria()">↺ Reset to Defaults</button>
+
+    <div id="narrative">
+      <strong>About this map:</strong> RentRight helps prospective renters evaluate King County census tracts 
+      based on personal priorities. Users can rank their preferred criteria by dragging rows and toggle factors 
+      on or off. Scores are normalized so the best available option always scores 100. The CartoDB Positron basemap 
+      was chosen for its clean, muted style that lets the choropleth colors stand out clearly. Data is fabricated for 
+      academic purposes, with transit and road buffer scores calculated from real Sound Transit station 
+      locations and highway geometry. Census tracts are the standard geographic unit for this type of socioeconomic analysis. 
+      Only active criteria are displayed, and only active criteria are weighted.<br><br>
+      <strong>Data sources:</strong> RentRight's data is synthesized for educational use, drawing inspiration from real-world datasets 
+      such as the American Community Survey, EPA's Air Quality Index, and local crime reports. Transit access scores are derived from 
+      proximity to Sound Transit stations, while road buffer scores are calculated based on distance from major highways. The economic 
+      health score is a composite index inspired by local business density and growth metrics. <br><br>
+      <strong>Criteria descriptions:</strong> Affordability considers the prevailing median rent price; 
+      Transit Access evaluates proximity to Link Light Rail stations; Safety is based on crime rates, 
+      both property and violent crimes alike; Air Quality uses mock EPA data; Median Income reflects 
+      local earnings; Away from Freeways and Golf Courses assess distance from these features; 
+      Walk/Bike Score measures pedestrian and cycling friendliness; Business Activity gauges local economic vibrancy; 
+      Proximity to Pins rewards areas near user-defined locations. <br><br>
+      <strong>My inspiration:</strong> I really enjoy looking at what kinds of properties are available in different neighborhoods, 
+      if there are common building or architecture choices, and "vibes" of nearby neighborhoods. I also enjoy looking at how much is 
+      being asked for to rent or own in these kinds of neighborhoods. As someone who is interested in urbanism, there are things that 
+      I value that are not typically reflected on traditonal real estate website such as Zillow and Redfin, such as proximity to or distance 
+      from very specific locations, or air quality. I wanted to create a tool that would allow me to explore these factors in a more 
+      interactive way, and to see how different neighborhoods stack up against each other based on my own priorities. In life, a difficult
+      thing to do is realize you don't know something, and find exactly where you can find that information you didn't know you needed, 
+      and that can be true of your knowledge of neighborhoods and cities as well. While this is just a proof of concept so far, I hope this 
+      tool can be a step towards that for people who are looking for a new place to live in King County, and want to explore the different 
+      factors that might influence their decision. <br><br>
+      </div>
+    </div>
+
+  <div id="map"></div>
+
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.fullscreen@1.6.0/Control.FullScreen.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script src="data.js"></script>
+<script src="scores.js"></script>
+<script src="map.js"></script>
+
+</body>
+</html>
