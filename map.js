@@ -5,7 +5,7 @@ const map = L.map('map').setView([47.49, -122.00], 10);
 
 // Basemap: CartoDB Positron — clean, muted, lets data colors stand out.
 // CARTO requires a free API key (non-commercial use): https://carto.com/basemaps/apikey/
-const CARTO_KEY = 'YOUR_CARTO_API_KEY';
+const CARTO_KEY = 'cb1_4ynt_1_845ce531efc61aea6f4f41e6';
 L.tileLayer(`https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=${CARTO_KEY}`, {
   attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>',
   subdomains: 'abcd',
